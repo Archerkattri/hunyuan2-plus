@@ -101,3 +101,40 @@ Model weights and demo/example assets are **not** committed to this repo — onl
 architecture (code + integration). Download the base-model weights from the upstream project,
 [Tencent-Hunyuan/Hunyuan3D-2](https://github.com/Tencent-Hunyuan/Hunyuan3D-2), per its instructions, and point the loader at them (see the code / upstream README). This
 keeps the repository lightweight and avoids redistributing third-party weights.
+
+## Citation
+
+If you use this work, please cite the base model (Tencent Hunyuan3D-2) and the acceleration method (HiCache):
+
+```bibtex
+@misc{lai2025flashvdm,
+      title={Unleashing Vecset Diffusion Model for Fast Shape Generation}, 
+      author={Zeqiang Lai and Yunfei Zhao and Zibo Zhao and Haolin Liu and Fuyun Wang and Huiwen Shi and Xianghui Yang and Qinxiang Lin and Jinwei Huang and Yuhong Liu and Jie Jiang and Chunchao Guo and Xiangyu Yue},
+      year={2025},
+      eprint={2503.16302},
+      archivePrefix={arXiv},
+      primaryClass={cs.CV},
+      url={https://arxiv.org/abs/2503.16302}, 
+}
+@misc{hunyuan3d22025tencent,
+    title={Hunyuan3D 2.0: Scaling Diffusion Models for High Resolution Textured 3D Assets Generation},
+    author={Tencent Hunyuan3D Team},
+    year={2025},
+    eprint={2501.12202},
+    archivePrefix={arXiv},
+    primaryClass={cs.CV}
+}
+
+@misc{yang2024hunyuan3d,
+    title={Hunyuan3D 1.0: A Unified Framework for Text-to-3D and Image-to-3D Generation},
+    author={Tencent Hunyuan3D Team},
+    year={2024},
+    eprint={2411.02293},
+    archivePrefix={arXiv},
+    primaryClass={cs.CV}
+}
+```
+
+```bibtex
+@misc{hicache2025, title={HiCache: Training-free Acceleration of Diffusion Models via Hermite Polynomial Feature Forecasting}, eprint={2508.16984}, archivePrefix={arXiv}, year={2025}}
+```
