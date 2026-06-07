@@ -10,10 +10,11 @@
 wired natively into its flow-matching denoise loop: skip the DiT on most sampling steps and forecast
 the cached velocity instead — no retraining, no monkey-patching.*
 
-![training&#8209;free](https://img.shields.io/badge/training--free-%E2%9C%93-2e8f5c)
-&nbsp;![PyTorch](https://img.shields.io/badge/PyTorch-ee4c2c?logo=pytorch&logoColor=white)
-&nbsp;![image&#8209;to&#8209;3D](https://img.shields.io/badge/image--to--3D-0.6B-2e6db0)
-&nbsp;![basis](https://img.shields.io/badge/basis-Hermite%20polynomial-7a5cc6)
+[![base: Hunyuan3D-2 mini](https://img.shields.io/badge/base-Hunyuan3D--2%20mini-d96902)](https://github.com/Tencent-Hunyuan/Hunyuan3D-2)
+&nbsp;[![arXiv: Hunyuan3D-2.0](https://img.shields.io/badge/arXiv-2501.12202-b5212f?logo=arxiv)](https://arxiv.org/abs/2501.12202)
+&nbsp;[![arXiv: HiCache](https://img.shields.io/badge/arXiv-2508.16984-b5212f?logo=arxiv)](https://arxiv.org/abs/2508.16984)
+&nbsp;[![license: Tencent Hunyuan 3D 2.0 Community](https://img.shields.io/badge/license-Tencent%20Hunyuan%203D%202.0%20Community-2e6db0)](./LICENSE)
+&nbsp;![basis: Hermite polynomial](https://img.shields.io/badge/basis-Hermite%20polynomial-7a5cc6)
 
 </div>
 
