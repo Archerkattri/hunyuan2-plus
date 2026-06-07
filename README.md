@@ -1,5 +1,7 @@
 <div align="center">
 
+<p align="center"><img src="assets/banner.png" alt="hunyuan2-plus" width="680"></p>
+
 # Hunyuan3D-2 mini + HiCache
 
 **Tencent's 0.6B image-to-3D, accelerated by training-free *Hermite-polynomial* velocity forecasting.**
@@ -111,8 +113,9 @@ exactly matching the uncached baseline on the deployed Hunyuan3D-2 mini — see 
 ## Attribution
 
 - **Hunyuan3D-2 / Hunyuan3D-2 mini** © Tencent — see [`LICENSE`](LICENSE) and [`NOTICE`](NOTICE)
-  (Tencent Hunyuan Non-Commercial License). This fork adds only the HiCache integration; the model,
-  weights, and pipeline are unchanged.
+  (Tencent Hunyuan 3D 2.0 Community License Agreement; note its territorial limits, large-user
+  threshold, and no-competing-model-training restrictions). This fork adds only the HiCache
+  integration; the model, weights, and pipeline are unchanged.
 - **HiCache** — *Training-free Acceleration of Diffusion Models via Hermite Polynomial Feature Forecasting*
   ([arXiv:2508.16984](https://arxiv.org/abs/2508.16984)). The Hermite/finite-difference core in
   [`hicache.py`](hy3dgen/shapegen/hicache.py) is a clean reimplementation; only the loop wiring is
