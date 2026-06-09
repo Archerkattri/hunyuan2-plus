@@ -30,7 +30,7 @@ base generator, and the `+` / `++` suffix is a **method choice**, not a rival pr
 | Hunyuan3D-2 mini | `hunyuan2-plus` | `hunyuan2-plus-plus` |
 | SAM 3D Objects | `sam3d-plus` | `sam3d-plus-plus` |
 | Fast-SAM3D | `fastsam3d-plus` | `fastsam3d-plus-plus` |
-| DiT-XL/2 (ImageNet) | `dit-plus` | `dit-plus-plus` |
+| DiT-XL/2 (ImageNet) | `dit-plus` *(unreleased)* | `dit-plus-plus` *(unreleased)* |
 | TRELLIS (v1) | `faster-trellis` | `faster-trellis-plus-plus` |
 | TRELLIS.2-4B (v2) | `hermit-trellis2` | `hermit-trellis2-plus-plus` |
 
@@ -108,8 +108,8 @@ at interval `3 / 5 / 6`.
 
 For the **exponential** forecaster that stays lossless at larger skips — `0.794` F-score at interval-5,
 exactly matching the uncached baseline on the deployed Hunyuan3D-2 mini — see the
-[**`hunyuan2-plus-plus`**](../hunyuan2-plus-plus) fork (HiCache++ / DMD), built on the standalone
-[**`hicache-plus-plus`**](../hicache-plus-plus) library.
+[**`hunyuan2-plus-plus`**](https://github.com/Archerkattri/hunyuan2-plus-plus) fork (HiCache++ / DMD), built on the standalone
+[**`hicache-plus-plus`**](https://github.com/Archerkattri/hicache-plus-plus) library.
 
 ## Attribution
 
@@ -165,3 +165,12 @@ If you use this work, please cite the base model (Tencent Hunyuan3D-2) and the a
 ```bibtex
 @misc{hicache2025, title={HiCache: Training-free Acceleration of Diffusion Models via Hermite Polynomial Feature Forecasting}, eprint={2508.16984}, archivePrefix={arXiv}, year={2025}}
 ```
+
+---
+
+## Family
+
+Part of the **HiCache++ acceleration family**.
+
+- **Family hub:** [`hicache-plus-plus`](https://github.com/Archerkattri/hicache-plus-plus) — the basis library behind this adapter.
+- **Sibling:** [`hunyuan2-plus-plus`](https://github.com/Archerkattri/hunyuan2-plus-plus) — the same base model with the HiCache++ (Dynamic Mode Decomposition / Prony) exponential-forecast variant.
