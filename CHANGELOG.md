@@ -3,8 +3,9 @@
 All notable changes, per version. Auto-generated from git tags by
 `third_party/launch_materials/gen_changelogs.sh`; do not edit by hand.
 
-## Unreleased
+## v0.1.0 — 2026-06-11
 
+- docs: add per-version CHANGELOG (4d2e4e8)
 - fix: corrected Hermite sign convention (x = +k) from hicache-pp 1.2.0, mini A/B banked (8ba84b7)
 - docs: drop unreleased dit-plus row from the family matrix (0a74762)
 - docs: standardize family README (hub link, method naming, attribution) (7bc4ce1)
