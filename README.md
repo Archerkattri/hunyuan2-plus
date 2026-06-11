@@ -60,12 +60,12 @@ At each compute ("full") step HiCache stores the CFG-combined velocity `F_t` and
 finite-difference derivatives `Δ^i F_t`. At a skipped step `k` steps past the last compute step, it forecasts
 
 ```
-F_hat_{t-k} = F_t + Σ_{i≥1} (Δ^i F_t / i!) · H̃_i(-k)
+F_hat_{t+k} = F_t + Σ_{i≥1} (Δ^i F_t / i!) · H̃_i(k)
 ```
 
 with the **dual-scaled physicist's Hermite** polynomial `H̃_n(x) = σ^n · H_n(σ·x)`, `σ ∈ (0,1)`. The `σ`
 contraction keeps the high-order terms bounded, giving a more stable extrapolation than the equivalent
-Taylor (monomial) series — TaylorSeer is the special case `H̃_i(-k) = (-k)^i`. With fewer than two anchors
+Taylor (monomial) series — TaylorSeer is the special case `H̃_i(k) = k^i`. With fewer than two anchors
 the forecast degenerates to plain reuse of the cached velocity (the correct zero-information forecast).
 
 ## Use
@@ -109,6 +109,38 @@ For the **exponential** forecaster that stays lossless at larger skips — `0.79
 exactly matching the uncached baseline on the deployed Hunyuan3D-2 mini — see the
 [**`hunyuan2-plus-plus`**](https://github.com/Archerkattri/hunyuan2-plus-plus) fork (HiCache++ / DMD), built on the standalone
 [**`hicache-plus-plus`**](https://github.com/Archerkattri/hicache-plus-plus) library.
+
+### Sign-convention update (2026-06-10)
+
+The vendored Hermite forecast in `hicache.py` evaluated the basis at `x = -k`; the corrected
+convention from [hicache-plus-plus 1.2.0](https://github.com/Archerkattri/hicache-plus-plus)
+is `x = +k` (the upstream TaylorSeer distance convention; `-k` flips every odd-order term,
+extrapolating backwards). This fork now ships the corrected forecast. All previously published
+numbers were measured with the as-released code and remain valid as-measured.
+
+Re-validated on the deployed **Hunyuan3D-2 mini** (Toys4K, 10 objects, F-score\@0.05, the
+deterministic protocol of the family benchmark; the as-released arm reproduces the published
+cells bit-exact):
+
+| config | as-released (`x = -k`) | corrected (`x = +k`) |
+|---|---:|---:|
+| vanilla (uncached) | 0.794 | 0.794 |
+| HiCache i3/o2 | 0.792 | 0.760 |
+| HiCache i5/o3 (probe) | 0.738 | **0.784** |
+| HiCache i6/o3 (probe) | 0.578 | 0.404 |
+
+Reading the table honestly:
+
+- **At the published interval (i3/o2) the corrected forecast matches the as-released one.**
+  The 0.792 vs 0.760 full-set gap is a single Go-ICP alignment timeout on a rotationally
+  symmetric bowl (scored unaligned, a known protocol artifact); over the 7 objects aligned
+  in both runs the means are 0.922 (as-released) vs 0.921 (corrected), vanilla 0.911.
+- **At i5/o3 the corrected sign is clearly better** (0.784 vs 0.738, baseline 0.794), and it
+  rescues a catastrophic as-released cell (bottle 0.25 to 0.97). This is the regime where the
+  backwards extrapolation of the old sign bites.
+- **At i6/o3 both conventions are far below baseline** (0.58 / 0.40 vs 0.79): the polynomial
+  skip ceiling dominates regardless of sign. For wide skips use the exponential (DMD) fork,
+  which stays at 0.793 at interval-5 with the corrected warm-up fallback (re-validated).
 
 ## Attribution
 
