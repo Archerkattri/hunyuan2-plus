@@ -4,6 +4,12 @@
 
 # Hunyuan3D-2 mini + HiCache
 
+<p>
+  <a href="https://github.com/Archerkattri/hunyuan2-plus/releases"><img alt="Release" src="https://img.shields.io/github/v/release/Archerkattri/hunyuan2-plus?color=1f6feb"></a>
+  <a href="LICENSE"><img alt="License" src="https://img.shields.io/github/license/Archerkattri/hunyuan2-plus?color=0d9488"></a>
+</p>
+
+
 **Tencent's 0.6B image-to-3D, accelerated by training-free *Hermite-polynomial* velocity forecasting.**
 
 *[Hunyuan3D-2 mini](https://huggingface.co/tencent/Hunyuan3D-2mini) with [HiCache](https://arxiv.org/abs/2508.16984)
