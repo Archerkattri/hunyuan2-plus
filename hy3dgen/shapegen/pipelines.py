@@ -16,6 +16,7 @@ import copy
 import importlib
 import inspect
 import os
+import time
 from typing import List, Optional, Union
 
 import numpy as np
@@ -30,7 +31,41 @@ from tqdm import tqdm
 from .models.autoencoders import ShapeVAE
 from .models.autoencoders import SurfaceExtractors
 from .utils import logger, synchronize_timer, smart_load_model
-from .hicache import hicache_init, hicache_decide, hicache_update_derivatives, hicache_forecast
+from .hicache import (
+    hicache_init,
+    hicache_decide,
+    hicache_telemetry,
+    hicache_update_derivatives,
+    hicache_forecast,
+)
+from hicache_pp.budget import CacheBudget, CacheBudgetRuntime, RunIdentity, stable_digest
+
+
+def _coerce_hicache_budget(budget, *, backend: str, interval: int,
+                           max_horizon: Optional[int], max_memory_mb: Optional[float],
+                           audit_budget: int) -> CacheBudget:
+    """Normalize the public deployment envelope without changing old defaults."""
+    if budget is None:
+        budget = CacheBudget(
+            backend=backend,
+            allowed_stages=("shape",),
+            max_horizon=max(1, int(interval) - 1) if max_horizon is None else max_horizon,
+            quality_preset="adapter-default",
+            max_memory_mb=max_memory_mb,
+            audit_budget=audit_budget,
+            fallback="full",
+        )
+    elif not isinstance(budget, CacheBudget):
+        budget = CacheBudget.from_mapping(budget)
+    return budget
+
+
+def _cache_tensor_memory_mb(value) -> Optional[float]:
+    """Return the forecast-buffer size, not a claimed peak model allocation."""
+    try:
+        return float(value.numel() * value.element_size()) / (1024.0 * 1024.0)
+    except (AttributeError, TypeError, ValueError):
+        return None
 
 
 def retrieve_timesteps(
@@ -333,17 +368,55 @@ class Hunyuan3DDiTPipeline:
         return self.device
 
     def enable_hicache(self, interval: int = 4, max_order: int = 1, first_enhance: int = 2,
-                       end_enhance: Optional[int] = None, sigma: float = 0.5):
+                       end_enhance: Optional[int] = None, sigma: float = 0.5, budget=None,
+                       max_horizon: Optional[int] = None, max_memory_mb: Optional[float] = None,
+                       audit_budget: int = 0):
         """HiCache (Hermite) velocity-forecast acceleration on the flow-matching denoise
         loop — skip the DiT on (interval-1)/interval of the steps (arXiv:2508.16984).
         Read natively by ``Hunyuan3DDiTFlowMatchingPipeline.__call__``."""
+        cache_budget = _coerce_hicache_budget(
+            budget, backend="hermite", interval=interval, max_horizon=max_horizon,
+            max_memory_mb=max_memory_mb, audit_budget=audit_budget,
+        )
         self._hicache_cfg = dict(interval=interval, max_order=max_order, first_enhance=first_enhance,
-                                 end_enhance=end_enhance, sigma=sigma)
+                                 end_enhance=end_enhance, sigma=sigma,
+                                 budget=cache_budget)
+        self._last_hicache_telemetry = None
+        self._last_hicache_manifest = None
         return self
 
     def disable_hicache(self):
         self._hicache_cfg = None
+        self._last_hicache_telemetry = None
+        self._last_hicache_manifest = None
         return self
+
+    def get_hicache_status(self):
+        """Return whether the Hermite comparison arm is enabled."""
+        enabled = getattr(self, "_hicache_cfg", None) is not None
+        return {"enabled": enabled, "active": enabled,
+                "backend": "hermite" if enabled else None,
+                "reason": None if enabled else "disabled"}
+
+    def get_hicache_telemetry(self):
+        """Return telemetry from the most recently completed cached run."""
+        return getattr(self, "_last_hicache_telemetry", None)
+
+    def get_hicache_manifest(self):
+        """Return the portable budget/identity manifest from the latest run."""
+        manifest = getattr(self, "_last_hicache_manifest", None)
+        return copy.deepcopy(manifest) if manifest is not None else None
+
+    def save_hicache_manifest(self, destination):
+        """Persist the latest portable manifest without serializing tensors or paths."""
+        manifest = self.get_hicache_manifest()
+        if manifest is None:
+            raise RuntimeError("no completed HiCache run is available")
+        import json
+        with open(destination, "w", encoding="utf-8") as handle:
+            json.dump(manifest, handle, indent=2, sort_keys=True, allow_nan=False)
+            handle.write("\n")
+        return destination
 
     def enable_model_cpu_offload(self, gpu_id: Optional[int] = None, device: Union[torch.device, str] = "cuda"):
         r"""
@@ -653,6 +726,9 @@ class Hunyuan3DDiTPipeline:
                     step_idx = i // getattr(self.scheduler, "order", 1)
                     callback(step_idx, t, outputs)
 
+            if hicache is not None:
+                self._last_hicache_telemetry = hicache_telemetry(hicache)
+
         return self._export(
             latents,
             output_type,
@@ -754,13 +830,75 @@ class Hunyuan3DDiTFlowMatchingPipeline(Hunyuan3DDiTPipeline):
         with synchronize_timer('Diffusion Sampling'):
             # HiCache: forecast the CFG-combined velocity on skipped steps (skip the
             # whole DiT). No-op unless enable_hicache was called.
-            hicache = (hicache_init(num_steps=num_inference_steps, **self._hicache_cfg)
-                       if getattr(self, "_hicache_cfg", None) is not None else None)
+            cache_cfg = getattr(self, "_hicache_cfg", None)
+            hicache = (hicache_init(
+                num_steps=num_inference_steps,
+                **{key: value for key, value in cache_cfg.items() if key != "budget"},
+            ) if cache_cfg is not None else None)
+            budget_runtime = None
+            if hicache is not None:
+                budget = cache_cfg["budget"]
+                model_id = f"{type(self.model).__module__}.{type(self.model).__qualname__}"
+                schedule = {
+                    "num_steps": int(num_inference_steps),
+                    "interval": int(hicache["interval"]),
+                    "first_enhance": int(hicache["first_enhance"]),
+                    "end_enhance": int(hicache["end_enhance"]),
+                    "backend": str(hicache["backend"]),
+                }
+                condition_shape = tuple(getattr(cond, "shape", ()))
+                identity = RunIdentity(
+                    model_id=model_id,
+                    run_id=hicache["run_id"],
+                    schedule_digest=stable_digest(schedule),
+                    cfg_branch="cfg-combined",
+                    conditioning_id=stable_digest({"condition_shape": condition_shape}),
+                    stage="shape",
+                    token_layout_digest=stable_digest({"latent_shape": tuple(latents.shape)}),
+                    dtype=str(latents.dtype),
+                    device=str(latents.device),
+                    batch_id=stable_digest({"batch_size": int(batch_size)}),
+                )
+                budget_runtime = CacheBudgetRuntime(
+                    budget,
+                    identity,
+                    model_digest=stable_digest({"model_id": model_id}),
+                    config_digest=stable_digest({"budget": budget.as_dict(), "schedule": schedule}),
+                    input_digest=stable_digest({
+                        "latent_shape": tuple(latents.shape),
+                        "condition_shape": condition_shape,
+                    }),
+                )
             for i, t in enumerate(tqdm(timesteps, disable=not enable_pbar, desc="Diffusion Sampling:")):
-                if hicache is not None and hicache_decide(hicache) == "forecast":
+                scheduled = hicache_decide(hicache) if hicache is not None else "full"
+                budget_decision = None
+                if budget_runtime is not None:
+                    forecast_requested = scheduled == "forecast"
+                    budget_decision = budget_runtime.decide(
+                        "shape",
+                        horizon=max(1, int(hicache.get("counter", 0))) if forecast_requested else 0,
+                        method=budget.backend,
+                        supported=True,
+                        memory_mb=_cache_tensor_memory_mb(latents),
+                        force_full=(not forecast_requested or budget.backend == "full"),
+                        audit=forecast_requested and budget_runtime.audits_remaining > 0,
+                        controller_selected=True,
+                    )
+                serve_forecast = scheduled == "forecast" and (
+                    budget_decision is None or budget_decision.mode == "forecast"
+                )
+                if scheduled == "forecast" and not serve_forecast:
+                    hicache["type"] = "full"
+                    hicache["counter"] = 0
+                    if not hicache["activated_steps"] or hicache["activated_steps"][-1] != i:
+                        hicache["activated_steps"].append(i)
+
+                work_started = time.perf_counter()
+                if serve_forecast:
                     # forecast the final velocity from cached anchors; skip the DiT.
                     noise_pred = hicache_forecast(hicache)
                     hicache["step"] += 1
+                    measured_method = "hermite"
                 else:
                     # expand the latents if we are doing classifier free guidance
                     if do_classifier_free_guidance:
@@ -781,6 +919,14 @@ class Hunyuan3DDiTFlowMatchingPipeline(Hunyuan3DDiTPipeline):
                         # cache the final CFG-combined velocity at this compute step
                         hicache_update_derivatives(hicache, noise_pred.detach())
                         hicache["step"] += 1
+                    measured_method = "full"
+
+                if budget_runtime is not None:
+                    budget_runtime.record_measurement(
+                        "shape",
+                        measured_method,
+                        wall_time_ms=(time.perf_counter() - work_started) * 1000.0,
+                    )
 
                 # compute the previous noisy sample x_t -> x_t-1
                 outputs = self.scheduler.step(noise_pred, t, latents)
@@ -789,6 +935,11 @@ class Hunyuan3DDiTFlowMatchingPipeline(Hunyuan3DDiTPipeline):
                 if callback is not None and i % callback_steps == 0:
                     step_idx = i // getattr(self.scheduler, "order", 1)
                     callback(step_idx, t, outputs)
+
+            if hicache is not None:
+                self._last_hicache_telemetry = hicache_telemetry(hicache)
+                if budget_runtime is not None:
+                    self._last_hicache_manifest = budget_runtime.manifest.as_dict()
 
         return self._export(
             latents,

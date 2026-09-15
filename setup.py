@@ -27,6 +27,7 @@ setup(
         'numpy',
         'ninja',
         'diffusers',
+        'hicache-pp>=1.2.1',
         'pybind11',
         'opencv-python',
         'einops',

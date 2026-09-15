@@ -105,7 +105,12 @@ mesh.export('demo.glb')
 compute/forecast schedule natively (see [`hy3dgen/shapegen/hicache.py`](hy3dgen/shapegen/hicache.py) and the
 denoise loop in [`hy3dgen/shapegen/pipelines.py`](hy3dgen/shapegen/pipelines.py)).
 
-## Results
+## Historical results (not current validation)
+
+No current-commit model or GPU A/B was run in this bounded packet. The figures below
+are historical, checkpoint- and protocol-specific evidence for the Hermite baseline;
+they are not defaults for other Hunyuan variants. The current acceptance fields are
+recorded in [`benchmarks/hunyuan2-plus.json`](benchmarks/hunyuan2-plus.json).
 
 HiCache is the **polynomial baseline**: lossless at low skip intervals, then degrading as the skip grows,
 because the Hermite (polynomial) basis is only a local truncation of the trajectory's true exponential
@@ -212,3 +217,9 @@ Part of the **HiCache++ acceleration family**.
 
 - **Family hub:** [`hicache-plus-plus`](https://github.com/Archerkattri/hicache-plus-plus) — the basis library behind this adapter.
 - **Sibling:** [`hunyuan2-plus-plus`](https://github.com/Archerkattri/hunyuan2-plus-plus) — the same base model with the HiCache++ (Dynamic Mode Decomposition / Prony) exponential-forecast variant.
+
+## Current release status
+
+The current adapter includes shared HiCache++ cache identity, timing and
+fallback accounting. Three CPU contract tests pass. Real Hunyuan3D model/CUDA
+execution and mesh-quality comparisons remain unmeasured.

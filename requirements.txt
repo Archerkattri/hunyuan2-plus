@@ -6,6 +6,7 @@ einops
 opencv-python
 numpy
 torch
+hicache-pp>=1.2.1
 transformers
 torchvision
 #taming-transformers-rom1504

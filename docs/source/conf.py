@@ -120,7 +120,7 @@ html_theme_options = {
 }
 
 #
-# -- Options for TODOs -------------------------------------------------------
+# -- Optional extension configuration ---------------------------------------
 #
 todo_include_todos = True
 

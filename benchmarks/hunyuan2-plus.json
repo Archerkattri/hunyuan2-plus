@@ -1,0 +1,35 @@
+{
+  "schema_version": 1,
+  "project": "hunyuan2-plus",
+  "commit": "e5535b969e98379631b738ed7a70d55d38b8d043",
+  "base_model": "Hunyuan3D-2 mini",
+  "pipeline": "Hunyuan3DDiTFlowMatchingPipeline",
+  "stage": "shape-generation flow-matching denoise loop",
+  "method": "HiCache scaled-Hermite",
+  "cfg_site": "post-CFG-combined velocity",
+  "configuration": {
+    "interval": null,
+    "max_order": null,
+    "first_enhance": null,
+    "end_enhance": null,
+    "sigma": null,
+    "num_inference_steps": null,
+    "guidance_scale": null
+  },
+  "acceptance": {
+    "status": "not-run",
+    "checkpoint": null,
+    "input": null,
+    "seed": null,
+    "baseline_latency_ms": null,
+    "cached_latency_ms": null,
+    "speedup": null,
+    "metric": "F-score against uncached mini output",
+    "quality_vs_uncached": null,
+    "reason": "No model weights or GPU inference were run in this bounded packet."
+  },
+  "provenance": {
+    "historical_claims_reused_as_current_validation": false,
+    "notes": "Fill from a paired uncached/Hermite run on the same mini checkpoint, input, seed, and schedule."
+  }
+}
