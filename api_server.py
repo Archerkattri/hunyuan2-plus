@@ -40,6 +40,7 @@ from hy3dgen.shapegen import Hunyuan3DDiTFlowMatchingPipeline, FloaterRemover, D
     MeshSimplifier
 from hy3dgen.texgen import Hunyuan3DPaintPipeline
 from hy3dgen.text2image import HunyuanDiTPipeline
+from safe_paths import resolve_output_path, validated_mesh_type, validated_uid
 
 LOGDIR = '.'
 
@@ -202,14 +203,21 @@ class ModelWorker:
             mesh = trimesh.load(BytesIO(base64.b64decode(params["mesh"])), file_type='glb')
         else:
             seed = params.get("seed", 1234)
-            params['generator'] = torch.Generator(self.device).manual_seed(seed)
-            params['octree_resolution'] = params.get("octree_resolution", 128)
-            params['num_inference_steps'] = params.get("num_inference_steps", 5)
-            params['guidance_scale'] = params.get('guidance_scale', 5.0)
-            params['mc_algo'] = 'mc'
+            generator = torch.Generator(self.device).manual_seed(seed)
+            # Pass explicit kwargs instead of **params: the raw request dict
+            # must never control arbitrary pipeline options (callbacks,
+            # output types, ...), and only the decoded PIL image may reach
+            # the pipeline.
             import time
             start_time = time.time()
-            mesh = self.pipeline(**params)[0]
+            mesh = self.pipeline(
+                image=image,
+                generator=generator,
+                octree_resolution=params.get("octree_resolution", 128),
+                num_inference_steps=params.get("num_inference_steps", 5),
+                guidance_scale=params.get("guidance_scale", 5.0),
+                mc_algo="mc",
+            )[0]
             logger.info("--- %s seconds ---" % (time.time() - start_time))
 
         if params.get('texture', False):
@@ -218,11 +226,11 @@ class ModelWorker:
             mesh = FaceReducer()(mesh, max_facenum=params.get('face_count', 40000))
             mesh = self.pipeline_tex(mesh, image)
 
-        type = params.get('type', 'glb')
-        with tempfile.NamedTemporaryFile(suffix=f'.{type}', delete=False) as temp_file:
+        mesh_type = validated_mesh_type(params.get('type', 'glb'))
+        with tempfile.NamedTemporaryFile(suffix=f".{mesh_type}", delete=False) as temp_file:
             mesh.export(temp_file.name)
             mesh = trimesh.load(temp_file.name)
-            save_path = os.path.join(SAVE_DIR, f'{str(uid)}.{type}')
+            save_path = resolve_output_path(SAVE_DIR, f"{uid}.{mesh_type}")
             mesh.export(save_path)
 
         torch.cuda.empty_cache()
@@ -286,7 +294,11 @@ async def generate(request: Request):
 
 @app.get("/status/{uid}")
 async def status(uid: str):
-    save_file_path = os.path.join(SAVE_DIR, f'{uid}.glb')
+    try:
+        safe_uid = validated_uid(uid)
+    except ValueError:
+        return JSONResponse({"status": "not_found"}, status_code=404)
+    save_file_path = resolve_output_path(SAVE_DIR, f"{safe_uid}.glb")
     print(save_file_path, os.path.exists(save_file_path))
     if not os.path.exists(save_file_path):
         response = {'status': 'processing'}
