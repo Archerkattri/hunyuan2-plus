@@ -116,10 +116,12 @@ python3 setup.py install
 **Hunyuan3D-DiT**にアクセスするには、次のようにします：
 
 ```python
+from PIL import Image
 from hy3dgen.shapegen import Hunyuan3DDiTFlowMatchingPipeline
 
 pipeline = Hunyuan3DDiTFlowMatchingPipeline.from_pretrained('tencent/Hunyuan3D-2')
-mesh = pipeline(image='assets/demo.png')[0]
+image = Image.open('assets/demo.png').convert('RGBA')
+mesh = pipeline(image=image)[0]
 ```
 
 出力メッシュは[trimeshオブジェクト](https://trimesh.org/trimesh.html)であり、glb/obj（または他の形式）ファイルに保存できます。
@@ -128,14 +130,16 @@ mesh = pipeline(image='assets/demo.png')[0]
 
 ```python
 from hy3dgen.texgen import Hunyuan3DPaintPipeline
+from PIL import Image
 from hy3dgen.shapegen import Hunyuan3DDiTFlowMatchingPipeline
 
 # まずメッシュを生成しましょう
 pipeline = Hunyuan3DDiTFlowMatchingPipeline.from_pretrained('tencent/Hunyuan3D-2')
-mesh = pipeline(image='assets/demo.png')[0]
+image = Image.open('assets/demo.png').convert('RGBA')
+mesh = pipeline(image=image)[0]
 
 pipeline = Hunyuan3DPaintPipeline.from_pretrained('tencent/Hunyuan3D-2')
-mesh = pipeline(mesh, image='assets/demo.png')
+mesh = pipeline(mesh, image=image)
 ```
 
 より高度な使用法については、[minimal_demo.py](minimal_demo.py)を参照してください。例えば、**テキストから3D**や**手作りメッシュのテクスチャ生成**などです。

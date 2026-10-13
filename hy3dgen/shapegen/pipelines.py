@@ -575,11 +575,13 @@ class Hunyuan3DDiTPipeline:
         return latents
 
     def prepare_image(self, image) -> dict:
-        if isinstance(image, str) and not os.path.exists(image):
-            raise FileNotFoundError(f"Couldn't find image at path {image}")
-
         if not isinstance(image, list):
             image = [image]
+        if not image or any(not isinstance(item, Image.Image) for item in image):
+            raise TypeError(
+                "image must contain PIL images; "
+                "open local files explicitly before calling the pipeline"
+            )
 
         outputs = []
         for img in image:

@@ -133,10 +133,12 @@ python3 setup.py install
 你可以通过以下方式使用 混元 3D-DiT：
 
 ```python
+from PIL import Image
 from hy3dgen.shapegen import Hunyuan3DDiTFlowMatchingPipeline
 
 pipeline = Hunyuan3DDiTFlowMatchingPipeline.from_pretrained('tencent/Hunyuan3D-2')
-mesh = pipeline(image='assets/demo.png')[0]
+image = Image.open('assets/demo.png').convert('RGBA')
+mesh = pipeline(image=image)[0]
 ```
 
 输出的网格是一个 Trimesh 对象，你可以将其保存为 glb/obj（或其他格式）文件。
@@ -144,14 +146,16 @@ mesh = pipeline(image='assets/demo.png')[0]
 
 ```python
 from hy3dgen.texgen import Hunyuan3DPaintPipeline
+from PIL import Image
 from hy3dgen.shapegen import Hunyuan3DDiTFlowMatchingPipeline
 
 # let's generate a mesh first
 pipeline = Hunyuan3DDiTFlowMatchingPipeline.from_pretrained('tencent/Hunyuan3D-2')
-mesh = pipeline(image='assets/demo.png')[0]
+image = Image.open('assets/demo.png').convert('RGBA')
+mesh = pipeline(image=image)[0]
 
 pipeline = Hunyuan3DPaintPipeline.from_pretrained('tencent/Hunyuan3D-2')
-mesh = pipeline(mesh, image='assets/demo.png')
+mesh = pipeline(mesh, image=image)
 ```
 
 请访问 [minimal_demo.py](minimal_demo.py) 以了解更多高级用法，例如 文本转 3D 以及 为手工制作的网格生成纹理。
