@@ -16,16 +16,17 @@ import os
 import random
 import shutil
 import time
+import uuid
 from glob import glob
 from pathlib import Path
 
 import gradio as gr
+from gradio.utils import get_upload_folder
 import torch
 import trimesh
 import uvicorn
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
-import uuid
 
 from hy3dgen.shapegen.utils import logger
 
@@ -80,6 +81,19 @@ def gen_save_folder(max_size=200):
     print(f"Created new folder: {new_folder}")
 
     return new_folder
+
+
+def _resolve_generated_mesh_path(file_path):
+    """Accept only mesh files inside this app's output or Gradio cache roots."""
+    if not isinstance(file_path, (str, os.PathLike)):
+        raise ValueError("Invalid mesh path")
+    candidate = os.path.normcase(os.path.realpath(os.fspath(file_path)))
+    allowed_roots = (SAVE_DIR, get_upload_folder())
+    for allowed_root in allowed_roots:
+        root = os.path.normcase(os.path.realpath(allowed_root))
+        if candidate.startswith(root + os.sep):
+            return candidate
+    raise ValueError("Mesh path must be inside the application output or Gradio cache directory")
 
 
 def export_mesh(mesh, save_folder, textured=False, type='glb'):
@@ -602,7 +616,8 @@ def build_app():
             print(f'exporting {file_out}')
             print(f'reduce face to {target_face_num}')
             if export_texture:
-                mesh = trimesh.load(file_out2)
+                mesh_path = _resolve_generated_mesh_path(file_out2)
+                mesh = trimesh.load(mesh_path)
                 save_folder = gen_save_folder()
                 path = export_mesh(mesh, save_folder, textured=True, type=file_type)
 
@@ -612,7 +627,8 @@ def build_app():
                 model_viewer_html = build_model_viewer_html(save_folder, height=HTML_HEIGHT, width=HTML_WIDTH,
                                                             textured=True)
             else:
-                mesh = trimesh.load(file_out)
+                mesh_path = _resolve_generated_mesh_path(file_out)
+                mesh = trimesh.load(mesh_path)
                 mesh = floater_remove_worker(mesh)
                 mesh = degenerate_face_remove_worker(mesh)
                 if reduce_face:
